@@ -3,7 +3,7 @@
 
 __author__ = 'Owen_Study/owen_study@126.com'
 
-import re
+import re,os
 import template
 
 ''' 传入mapping column list列表'''
@@ -13,6 +13,7 @@ class TemplateScript(object):
         self.__mapping_column_list=mapping_template.get_mapping_cols()
         #所有的template 表名
         self.__table_list=self.__get_table_list()
+        self.__module_name = mapping_file_name
         #date format
         self.__date_format='yyyy/mm/dd'
         #保存公用的Sql
@@ -32,8 +33,8 @@ class TemplateScript(object):
     def __get_table_list(self):
         table_list=[]
         for row in self.__mapping_column_list:
-            table_list.append(row.tableName)
-
+            if row.tableName:
+                table_list.append(row.tableName)
         key_table_list=list(set(table_list))
         return key_table_list
         pass
@@ -99,22 +100,26 @@ class TemplateScript(object):
             script=script+'create table '+table_name +'(\n'
             for row in self.__mapping_column_list:
                 if row.tableName==table_name:
+                    #调整字段的长度，使脚本对齐美观
                     script=script+row.columnName.ljust(30)
                     #为空的长度也都设置为默认300
                     try:
                         #处理字段长度，如果是纯数字的，如果超过300则用定义的值，否则用默认值，确保有超过300长度的创建表是正确的
-                        if type(row.length) == type(123):
-                            col_len = row.length
+                        data_length=self.__get_data_length(row.length)
+                        if data_length!=None:
+                            if data_length>300:
+                                col_len=data_length
+                            else:
+                                col_len=300
                         else:
-                            #转换成字符串的数字
-                            if type(row.length) == type('str'):
-                                if re.match('^\d+$',row.length)!=None:
-                                    col_len = int(row.length)
-                                else:
-                                    col_len = 300
-                        if col_len<=300:
                             col_len=300
-                        script = script + ' varchar2(%d)'%col_len
+
+                        # 创建主键的索引
+                        if row.primaryKey=='Y':
+                            primary_key=' primary key'
+                        else:
+                            primary_key=''
+                        script = script + ' varchar2(%d) %s'%(col_len,primary_key)
                     except Exception as e:
                         print('创建Template表时出现错误： '+str(e))
                     script=script+',\n'
@@ -125,14 +130,20 @@ class TemplateScript(object):
 
     '''取得传进来值的长度'''
     def __get_data_length(self,data_length):
+        col_len=data_length
         if type(data_length)==type(123):
-            return data_length
+            col_len= data_length
         elif type(data_length)==type('str'):
             if re.match('^\d+$', data_length) != None:
                 col_len = int(data_length)
             else:
                 col_len=None
-        return data_length
+        elif data_length==None:
+            pass
+        else:
+            print('数据长度字段的值:%s是未知道的类型!'%type(data_length))
+            col_len=None
+        return col_len
 
     '''取得表的主键字段名称'''
     def __get_pk_column_name(self,table_name):
@@ -216,15 +227,15 @@ class TemplateScript(object):
         # 数据类型的校验
         need_verify = True
         data_length_int=self.__get_data_length(data_length)
-        if data_type == 'NUMBER':
+        if data_type == 'NUMBER' :
             veri_code = 'VERI_NUMBER_ILLEGAL'
             where_sql = ' where f_is_number(%s)=1 and %s is not null' % (column_name, column_name)
         elif data_type == 'DATE':
             veri_code = 'VERI_DATE_ILLEGAL'
             where_sql = ' where f_is_date(%s)=1 and %s is not null' % (column_name, column_name)
-        elif data_type == 'VARCHAR2':
+        elif data_type == 'VARCHAR2' and data_length_int:
             veri_code = 'VERI_STRING_LENGTH_OVER_DEF'
-            where_sql = ' where length(%s)>%d and %s is not null' % (column_name, data_length, column_name)
+            where_sql = ' where length(%s)>%d and %s is not null' % (column_name, data_length_int, column_name)
         else:
             need_verify=False
 
@@ -259,22 +270,41 @@ class TemplateScript(object):
                     fk_sql=self.__get_foreign_key_sql(row.moduleName,row.tableName,row.columnName,row.referTable)
                     total_veri_sql = total_veri_sql + fk_sql
                     pass
+        total_veri_sql=total_veri_sql+'\n commit;'
 
         return total_veri_sql
         pass
-    '''把脚本写入文件'''
-    def save_script(self,file_name):
-        script_file=open(file_name,'w')
-        create_table_script=self.create_veri_result_table()
-        public_function_script=self.public_function()
-        veri_script=self.gen_veri_template_script()
-        script_file.write(create_table_script)
+
+    '''生成公共函数的脚本'''
+    def save_public_script(self, file_name):
+        script_file = open(file_name, 'w')
+        # 创建保存校验结果的表
+        create_table_script_result = self.create_veri_result_table()
+        # 创建校验过程中用到的一些函数
+        public_function_script = self.public_function()
+        # 保存到文件
+        script_file.write(create_table_script_result)
         script_file.write(public_function_script)
+        script_file.close()
+
+    '''把创建表脚本写入文件'''
+    def save_template_create_script(self,file_name):
+        script_file=open(file_name,'w')
+        # Template表的创建脚本
+        create_table_script_template=self.__create_template_script()
+
+        script_file.write(create_table_script_template)
+        script_file.close()
+        pass
+    '''把创建表脚本写入文件'''
+    def save_template_veri_script(self,file_name):
+        script_file=open(file_name,'w')
+        # 校验脚本
+        veri_script=self.gen_veri_template_script()
+
         script_file.write(veri_script)
         script_file.close()
         pass
-
-
 
 if __name__=='__main__':
     script=TemplateScript('UAL_Mapping_Party_V0.2.4.xlsx')
