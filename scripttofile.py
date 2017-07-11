@@ -52,8 +52,12 @@ def generate_all_scripts():
     # 保存执行所有脚本的文件
     run_all_scripts = run_all_scripts + 'spool off' + '\n'
     # 保存创建表语句和公共语句
+    scripts_create_tables='spool 00initial_scripts.log\n'+scripts_create_tables
+    scripts_create_tables = scripts_create_tables+'\nspool off\n'
     script_handler.save_run_all_scripts('00initial_scripts.sql',scripts_create_tables)
     # 保存校验表的脚本
+    scripts_veri='spool 01veri_scripts.log\n'+scripts_veri
+    scripts_veri = scripts_veri+'\nspool off\n'
     script_handler.save_run_all_scripts('01veri_scripts.sql',scripts_veri)
     # 保存成多个文件 时的执行所有脚本的命令文件
     script_handler.save_run_all_scripts(file_name_exec,run_all_scripts)
