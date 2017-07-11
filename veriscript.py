@@ -270,7 +270,7 @@ class TemplateScript(object):
                     fk_sql=self.__get_foreign_key_sql(row.moduleName,row.tableName,row.columnName,row.referTable)
                     total_veri_sql = total_veri_sql + fk_sql
                     pass
-        total_veri_sql=total_veri_sql+'\n commit;'
+        total_veri_sql=total_veri_sql+'\n commit;\n'
 
         return total_veri_sql
         pass
@@ -286,6 +286,7 @@ class TemplateScript(object):
         script_file.write(create_table_script_result)
         script_file.write(public_function_script)
         script_file.close()
+        return public_function_script+'\n'+create_table_script_result
 
     '''把创建表脚本写入文件'''
     def save_template_create_script(self,file_name):
@@ -295,6 +296,7 @@ class TemplateScript(object):
 
         script_file.write(create_table_script_template)
         script_file.close()
+        return create_table_script_template
         pass
     '''把创建表脚本写入文件'''
     def save_template_veri_script(self,file_name):
@@ -304,7 +306,14 @@ class TemplateScript(object):
 
         script_file.write(veri_script)
         script_file.close()
+
+        return veri_script
         pass
+    ''' 创建执行所有脚本的文件'''
+    def save_run_all_scripts(self,file_name,run_scripts):
+        script_file=open(file_name,'w')
+        script_file.write(run_scripts)
+        script_file.close()
 
 if __name__=='__main__':
     script=TemplateScript('UAL_Mapping_Party_V0.2.4.xlsx')
