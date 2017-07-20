@@ -128,6 +128,87 @@ class TemplateScript(object):
         return all_table_script
         pass
 
+    '''生成每个表的控件文件，每个表生成一个单独的文件'''
+    ''' control file sample
+    load data
+	infile 'li_clt_adr.unl.tab'
+	replace into table li_clt_adr
+	fields terminated by '|' TRAILING NULLCOLS
+	(	                           
+    clt_num		"TRIM(:clt_num		)",
+    adr_num		"TRIM(:adr_num		)",
+    adr_fmt		"TRIM(:adr_fmt		)"
+    )
+    '''
+    def __create_control_file(self, table_name, file_name, column_list, column_split = '|'):
+        control_file_format='load data \n'+\
+                        "infile '{0}'\n"+\
+                        "replace into table {1}\n"+\
+                        "fields terminated by '{2}' trailing nullcols\n"+\
+                        "(\n{3}\n)"
+        control_file_format=control_file_format.format(file_name,table_name,column_split,column_list)
+        return control_file_format
+    '''运行sqlldr的文件'''
+    def __sqlldr_run_script(self, table_name):
+        sqlldr_script_format = "sqlldr $USERNAME/$PWD DIRECT=Y ROWS=50000 COLUMNARRAYROWS=50000 CONTROL={0}.ctl BAD={0}.bad LOG={0}.log"
+        sqlldr_script= sqlldr_script_format.format(table_name.lower())
+        return sqlldr_script
+    '''生成sqlldr windows格式的加载命令'''
+    def __save_sqlldr(self, file_content, os_type = 'win',  nls_lang= None):
+        # windows
+        nls_lang_format='{0} NLS_LANG={1}\n'
+        default_lang='AMERICAN_AMERICA.ZHS16GBK'
+        file_name_format='./controlfiles/01loadingdata.{0}'
+
+        # 加载文件的语言设置
+        if os_type =='win':
+            sqlldr_file = open(file_name_format.format('bat'), 'w')
+            if nls_lang == None:
+                sqlldr_file.write(nls_lang_format.format('set', default_lang))
+            else:
+                sqlldr_file.write(nls_lang_format.format('set', nls_lang))
+        else:
+            sqlldr_file = open(file_name_format.format('sh'), 'w')
+            if nls_lang == None:
+                sqlldr_file.write(nls_lang_format.format('export', default_lang))
+            else:
+                sqlldr_file.write(nls_lang_format.format('export', nls_lang))
+        # 写入每个文件的加载语句
+        sqlldr_file.write(file_content)
+        sqlldr_file.close()
+        pass
+    '''生成全部的控制文件'''
+    def gen_control_files(self, file_ext_name = 'txt', column_split = '|', nls_lang = 'AMERICAN_AMERICA.ZHS16GBK'):
+        sqlldr_scripts = ''
+        # sqlldr $USR_target/$PWD_target DIRECT=Y ROWS=50000 COLUMNARRAYROWS=50000 CONTROL=li_pln.ctl BAD=li_pln.bad LOG=li_pln.log
+        for table_name in self.__table_list:
+            one_column_list_format = '{0} \"TRIM(:{1})\",\n'
+            all_column_list = ''
+            for row in self.__mapping_column_list:
+                if row.tableName == table_name:
+                    # 每个列一行组成列的字符串
+                    one_column_list = one_column_list_format.format(row.columnName.ljust(30), row.columnName.ljust(30))
+                    all_column_list = all_column_list + one_column_list
+            # 去除最后一行的,
+            all_column_list = all_column_list[0:len(all_column_list) - 2]
+            lower_table_name=table_name.lower()
+            # 每个表生成一个文件
+            control_file_content=self.__create_control_file(lower_table_name, lower_table_name+ '.' + file_ext_name, all_column_list, column_split)
+            # 保存到文件中
+            control_file_name= './controlfiles/' + lower_table_name+'.ctl'
+            control_file=open(control_file_name, 'w')
+            control_file.write(control_file_content)
+            control_file.close()
+            # 保存sqlldr的运行命令
+            sqlldr_scripts = sqlldr_scripts + self.__sqlldr_run_script(lower_table_name)+'\n'
+        # 保存sqlldr的执行文件到文件中，保存两个版本，一个是windows，一个是linux
+        self.__save_sqlldr(sqlldr_scripts,'win', nls_lang)
+        self.__save_sqlldr(sqlldr_scripts,'linux', nls_lang)
+        # print(control_file_content)
+
+        return all_column_list
+
+        pass
     '''取得传进来值的长度'''
     def __get_data_length(self,data_length):
         col_len=data_length
@@ -316,5 +397,8 @@ class TemplateScript(object):
         script_file.close()
 
 if __name__=='__main__':
-    script=TemplateScript('UAL_Mapping_Party_V0.2.4.xlsx')
-    script.save_script('party.sql')
+
+
+    script=TemplateScript('./templates/UAL_Mapping_Party_V0.2.4.xlsx')
+    script.gen_control_files()
+    # script.save_script('party.sql')
