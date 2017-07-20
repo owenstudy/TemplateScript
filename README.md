@@ -9,4 +9,5 @@ Template related script, including creating table, basic verification
   5. 列的数据类型定义只支持三种类型的处理，DATE, NUMBER, VARCHAR2
   6. 运行的命令如下， python scripttofile.py
   7. 生成的创建表文件都是按固定长度300,以方便加载，如果有长度超过300的则使用template中的实际长度
+  8. 生成sqlldr加载文件，并按目录进行分类存放
 
