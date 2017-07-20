@@ -20,6 +20,7 @@ def generate_all_scripts():
     scripts_create_tables=''
     # 校验脚本生成一个文件
     scripts_veri=''
+    clear_sqlldr_flag=False
     for template in all_templates_file:
         file_ext=template.split('.')[len(template.split('.'))-1]
         # 文件没有扩展名
@@ -27,6 +28,10 @@ def generate_all_scripts():
         file_name_veri = file_path + template[:len(template) - len(file_ext) - 1] + '_veri.sql'
         if file_ext=='xls' or file_ext=='xlsx':
             script_handler=veriscript.TemplateScript(file_path+template)
+            # 清除已经存在的sqlldr执行文件，只执行一次
+            if clear_sqlldr_flag is not True:
+                script_handler.clear_sqlldr_file()
+                clear_sqlldr_flag = True
             #公共函数的脚本，只生成一次
             if not public_function_generated:
                 public_function_file_name=file_path+'1-public_script.sql'
@@ -48,6 +53,9 @@ def generate_all_scripts():
             scripts_veri = scripts_veri +'--'.rjust(20,'-')+file_name_veri+'\n'
             scripts_veri=scripts_veri+veri_table+'\n'
             pass
+            # 生成控制文件及执行加载的命令文件
+            script_handler.gen_control_files()
+
         pass
     # 保存执行所有脚本的文件
     run_all_scripts = run_all_scripts + 'spool off' + '\n'

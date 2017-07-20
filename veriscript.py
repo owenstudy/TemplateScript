@@ -150,9 +150,20 @@ class TemplateScript(object):
         return control_file_format
     '''运行sqlldr的文件'''
     def __sqlldr_run_script(self, table_name):
-        sqlldr_script_format = "sqlldr $USERNAME/$PWD DIRECT=Y ROWS=50000 COLUMNARRAYROWS=50000 CONTROL={0}.ctl BAD={0}.bad LOG={0}.log"
+        sqlldr_script_format = "sqlldr $USERNAME/$PWD DIRECT=Y ROWS=50000 COLUMNARRAYROWS=50000 CONTROL={0}.ctl BAD=./bad/{0}.bad LOG=./log/{0}.log"
         sqlldr_script= sqlldr_script_format.format(table_name.lower())
         return sqlldr_script
+    '''清除已经生成的sqlldr加载文件'''
+    def clear_sqlldr_file(self):
+        try:
+            sqlldr_win_file_name='./controlfiles/01loadingdata.bat'
+            sqlldr_linux_file_name ='./controlfiles/01loadingdata.sh'
+            if os.path.exists(sqlldr_win_file_name):
+                os.remove(sqlldr_win_file_name)
+            if os.path.exists(sqlldr_linux_file_name):
+                os.remove(sqlldr_linux_file_name)
+        except:
+            pass
     '''生成sqlldr windows格式的加载命令'''
     def __save_sqlldr(self, file_content, os_type = 'win',  nls_lang= None):
         # windows
@@ -160,19 +171,30 @@ class TemplateScript(object):
         default_lang='AMERICAN_AMERICA.ZHS16GBK'
         file_name_format='./controlfiles/01loadingdata.{0}'
 
-        # 加载文件的语言设置
-        if os_type =='win':
-            sqlldr_file = open(file_name_format.format('bat'), 'w')
+        if os_type == 'win':
+            file_name = file_name_format.format('bat')
+            remark_str = '--'
             if nls_lang == None:
-                sqlldr_file.write(nls_lang_format.format('set', default_lang))
+                nls_lang_used = nls_lang_format.format('set', default_lang)
             else:
-                sqlldr_file.write(nls_lang_format.format('set', nls_lang))
+                nls_lang_used = nls_lang_format.format('set', nls_lang)
         else:
-            sqlldr_file = open(file_name_format.format('sh'), 'w')
+            remark_str = '#'
+            file_name = file_name_format.format('sh')
             if nls_lang == None:
-                sqlldr_file.write(nls_lang_format.format('export', default_lang))
+                nls_lang_used = nls_lang_format.format('export', default_lang)
             else:
-                sqlldr_file.write(nls_lang_format.format('export', nls_lang))
+                nls_lang_used = nls_lang_format.format('export', nls_lang)
+        # 如果文件已经 存在 则只写入内容，不写入语言的头信息
+        if os.path.exists(file_name):
+            sqlldr_file = open(file_name, 'a')
+        else:
+            sqlldr_file = open(file_name, 'a')
+            # 写入语言信息
+            sqlldr_file.write(nls_lang_used)
+        # 写入模块信息
+        sqlldr_file.write(remark_str+self.__module_name+'\n')
+
         # 写入每个文件的加载语句
         sqlldr_file.write(file_content)
         sqlldr_file.close()
@@ -399,6 +421,7 @@ class TemplateScript(object):
 if __name__=='__main__':
 
 
-    script=TemplateScript('./templates/UAL_Mapping_Party_V0.2.4.xlsx')
+    script=TemplateScript('./templates/UAL_Mapping_Party_V0.2.5.xlsx')
+    script.clear_sqlldr_file()
     script.gen_control_files()
     # script.save_script('party.sql')
