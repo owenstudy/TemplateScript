@@ -46,8 +46,8 @@ class Template(object):
             # 循环所有 的列
             cell_value={}
             for cell in row:
-                #忽略已经加了删除线的行
-                if cell.font.strikethrough and self.__ignore_strike_row:
+                #忽略已经加了删除线的行,只检查前两列是否有删除线，则说明本行是删除的，其它单元格的删除线不识别
+                if cell.font.strikethrough and cell.col_idx<=2 and self.__ignore_strike_row:
                     break
                 # 排除掉第一行的标题
                 if cell.col_idx<=len(column_title_name) and cell.row>=2:
