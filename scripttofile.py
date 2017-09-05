@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 __author__ = 'Owen_Study/owen_study@126.com'
-import os
+import os, traceback
 import veriscript
 
 '''把脚本生成到脚本文件中'''
@@ -22,39 +22,43 @@ def generate_all_scripts():
     scripts_veri=''
     clear_sqlldr_flag=False
     for template in all_templates_file:
-        file_ext=template.split('.')[len(template.split('.'))-1]
-        # 文件没有扩展名
-        file_name_create=file_path+template[:len(template)-len(file_ext)-1]+'_create.sql'
-        file_name_veri = file_path + template[:len(template) - len(file_ext) - 1] + '_veri.sql'
-        if file_ext=='xls' or file_ext=='xlsx':
-            script_handler=veriscript.TemplateScript(file_path+template)
-            # 清除已经存在的sqlldr执行文件，只执行一次
-            if clear_sqlldr_flag is not True:
-                script_handler.clear_sqlldr_file()
-                clear_sqlldr_flag = True
-            #公共函数的脚本，只生成一次
-            if not public_function_generated:
-                public_function_file_name=file_path+'1-public_script.sql'
-                public_scripts=script_handler.save_public_script(public_function_file_name)
-                public_function_generated=True
-                run_all_scripts = run_all_scripts + '@' + public_function_file_name.replace(file_path,'') + '\n'
-                scripts_create_tables=scripts_create_tables+public_scripts+'\n'
-            #模块的创建表和校验脚本
-            create_table=script_handler.save_template_create_script(file_name_create)
-            veri_table=script_handler.save_template_veri_script(file_name_veri)
+        try:
+            file_ext=template.split('.')[len(template.split('.'))-1]
+            # 文件没有扩展名
+            file_name_create=file_path+template[:len(template)-len(file_ext)-1]+'_create.sql'
+            file_name_veri = file_path + template[:len(template) - len(file_ext) - 1] + '_veri.sql'
+            if file_ext.lower()=='xls' or file_ext.lower()=='xlsx':
+                script_handler=veriscript.TemplateScript(file_path+template)
+                # 清除已经存在的sqlldr执行文件，只执行一次
+                if clear_sqlldr_flag is not True:
+                    script_handler.clear_sqlldr_file()
+                    clear_sqlldr_flag = True
+                #公共函数的脚本，只生成一次
+                if not public_function_generated:
+                    public_function_file_name=file_path+'1-public_script.sql'
+                    public_scripts=script_handler.save_public_script(public_function_file_name)
+                    public_function_generated=True
+                    run_all_scripts = run_all_scripts + '@' + public_function_file_name.replace(file_path,'') + '\n'
+                    scripts_create_tables=scripts_create_tables+public_scripts+'\n'
+                #模块的创建表和校验脚本
+                create_table=script_handler.save_template_create_script(file_name_create)
+                veri_table=script_handler.save_template_veri_script(file_name_veri)
 
-            run_all_scripts=run_all_scripts+'@'+file_name_create.replace(file_path,'')+'\n'
-            run_all_scripts = run_all_scripts + '@' + file_name_veri.replace(file_path,'') + '\n'
-            # 创建表的脚本放在一个文件中
-            scripts_create_tables = scripts_create_tables +'--'.rjust(20,'-')+file_name_create+'\n'
-            scripts_create_tables=scripts_create_tables+create_table+'\n'
+                run_all_scripts=run_all_scripts+'@'+file_name_create.replace(file_path,'')+'\n'
+                run_all_scripts = run_all_scripts + '@' + file_name_veri.replace(file_path,'') + '\n'
+                # 创建表的脚本放在一个文件中
+                scripts_create_tables = scripts_create_tables +'--'.rjust(20,'-')+file_name_create+'\n'
+                scripts_create_tables=scripts_create_tables+create_table+'\n'
 
-            # 校验数据的脚本放在一个文件中
-            scripts_veri = scripts_veri +'--'.rjust(20,'-')+file_name_veri+'\n'
-            scripts_veri=scripts_veri+veri_table+'\n'
-            pass
-            # 生成控制文件及执行加载的命令文件
-            script_handler.gen_control_files()
+                # 校验数据的脚本放在一个文件中
+                scripts_veri = scripts_veri +'--'.rjust(20,'-')+file_name_veri+'\n'
+                scripts_veri=scripts_veri+veri_table+'\n'
+                pass
+                # 生成控制文件及执行加载的命令文件
+                script_handler.gen_control_files()
+        except Exception as e:
+            traceback.print_exc()
+            print('file:{0},error:{1}'.format(template,str(e)))
 
         pass
     # 保存执行所有脚本的文件

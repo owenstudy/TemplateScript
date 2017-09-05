@@ -272,7 +272,7 @@ class TemplateScript(object):
         need_verify = True
         if refertable:
             #只校验template之间的外銉关系
-            if refertable[0:2]!='DM_':
+            if str(refertable)[0:2]!='DM_':
                 return ''
         else:
             return ''
@@ -382,7 +382,10 @@ class TemplateScript(object):
                     unique_sql=self.__get_unique_sql(row.moduleName,row.tableName,row.columnName,row.primaryKey)
                     total_veri_sql = total_veri_sql + unique_sql
                     # 外键类型校验，只校验template之间的关系，代码表由于字段名称不统一，目前 还没有办法把校验加进来
-                    fk_sql=self.__get_foreign_key_sql(row.moduleName,row.tableName,row.columnName,row.referTable)
+                    try:
+                        fk_sql=self.__get_foreign_key_sql(row.moduleName,row.tableName,row.columnName,row.referTable)
+                    except Exception as e:
+                        print(str(e))
                     total_veri_sql = total_veri_sql + fk_sql
                     pass
         total_veri_sql=total_veri_sql+'\n commit;\n'
