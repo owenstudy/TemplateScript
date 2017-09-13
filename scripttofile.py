@@ -6,7 +6,8 @@ import os, traceback
 import veriscript
 
 '''把脚本生成到脚本文件中'''
-def generate_all_scripts():
+# 创建的表是不是需要数据类型，默认为不需要，生成一个统计的类型长度
+def generate_all_scripts(need_data_type = False):
     file_path='./templates/'
     all_templates_file=os.listdir(file_path)
     #公共函数生成的标志
@@ -41,7 +42,7 @@ def generate_all_scripts():
                     run_all_scripts = run_all_scripts + '@' + public_function_file_name.replace(file_path,'') + '\n'
                     scripts_create_tables=scripts_create_tables+public_scripts+'\n'
                 #模块的创建表和校验脚本
-                create_table=script_handler.save_template_create_script(file_name_create)
+                create_table=script_handler.save_template_create_script(file_name_create,need_data_type)
                 veri_table=script_handler.save_template_veri_script(file_name_veri)
 
                 run_all_scripts=run_all_scripts+'@'+file_name_create.replace(file_path,'')+'\n'
@@ -75,4 +76,4 @@ def generate_all_scripts():
     script_handler.save_run_all_scripts(file_name_exec,run_all_scripts)
 
 if __name__=='__main__':
-    generate_all_scripts()
+    generate_all_scripts(True)
