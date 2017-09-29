@@ -76,4 +76,5 @@ def generate_all_scripts(need_data_type = False):
     script_handler.save_run_all_scripts(file_name_exec,run_all_scripts)
 
 if __name__=='__main__':
-    generate_all_scripts(True)
+    # True 生成带数据类型的创建表语句
+    generate_all_scripts(need_data_type=True)
